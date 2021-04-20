@@ -86,12 +86,12 @@ Results :
 - res_v1/info/list_parents
 - res_v1/info/list_progeny
 
-# creates scripts to run ustacks, cstacks, sstacks and tsv2bam on all samples with various n parameters
+### creates scripts to run ustacks, cstacks, sstacks and tsv2bam on all samples with various n parameters
 > sh 4a_run_stacks_per_sample.sh  2 3 4
 
 Result : sh_stacks_per_samples_sn{2,3,4}.sh
 
-# run theses scripts
+### run theses scripts
 > nohup sh sh_stacks_per_samples_sn2.sh > trace_sh_stacks_per_samples_sn2 2>&1 &
 > 
 > nohup sh sh_stacks_per_samples_sn3.sh > trace_sh_stacks_per_samples_sn3 2>&1 &
