@@ -2,7 +2,8 @@
 
 ## Dispatch reads from libraries and create reads per sample
 Write 2 bash script which will create fastq files for each sample
->  ./1a_mk_assign_script.py --config config_v1.yaml
+
+  ./1a_mk_assign_script.py --config config_v1.yaml
 
 Result : 2 scripts v1_dispatch.sh et v1_concat.sh
 
