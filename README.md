@@ -1,4 +1,4 @@
-# Publi_EEP_2021-04_Carre_Amelie
+# DOI:XXX
 Protocol and scripts for data analysis corresponding to	publication
 
 **Genetic mapping of sex and self-incompatibility determinants in the androdioecious plant *Phillyrea angustifolia***
@@ -14,10 +14,9 @@ Amélie Carré 1, Sophie Gallina 1, Sylvain Santoni 2, Philippe Vernet 1, Cécil
 
 
 ## General procedure
-1. create markers using stacks (version v2.3e) : dispatch library reads, biold a catalog of markers and alignment bam files for each sample on the marker catalog
-2. create genetic map using lepmap3
+- Linkage Map
+  - create markers using stacks (version v2.3e) => 1_create_markers folder
+  - create genetic map using lepmap3 => 2_create_mao folder
+- Sex and SI loci identification using SEX-DETector => 3_sex_and_SI folder
+- Synteny analysis with the olive tree => 4_syntenie
 
-
-## 1 create markers using stacks (version v2.3e)
-
-## 2 create genetic map using lepmap3
