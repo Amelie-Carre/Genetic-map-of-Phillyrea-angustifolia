@@ -1,7 +1,15 @@
 # Step 1 Create markers using stacks (version v2.3e)
 
+## Orig data 
+- raw_data/LIBRARY_{R1, R2}.fastq.gz : raw reads for each library
+- Info-Tag-GBS_Filaire_HiSeq_290615-1.csv : Info for library with samples and barcode for each library
+- phenotypes_2019-06-05.csv : phenotype file fo each sample
+- config_v1.yaml : yaml config file for input files, options for some scripts and result folders
+
 ## Dispatch reads from libraries and create reads per sample
-Write 2 bash script which will create fastq files for each sample
+Create symbolic link to raw data
+> ln -s /path/to_the_raw_data_folder raw_data
+Write 2 bash script which will create fastq files for each sample, using Info-Tag-GBS_Filaire_HiSeq_290615-1.csv
 > ./1a_mk_assign_script.py --config config_v1.yaml
 
 Result : 2 scripts v1_dispatch.sh et v1_concat.sh
@@ -61,7 +69,7 @@ we tested param
 - n = M
 - m = 3
 
-input file : phenotypes_2019-06-05.csv : phenotype file fo each sample with library name and barcode data
+input file : phenotypes_2019-06-05.csv : phenotype file fo each sample
 
 Create folders
 
@@ -97,5 +105,4 @@ Result : sh_stacks_per_samples_sn{2,3,4}.sh
 > nohup sh sh_stacks_per_samples_sn3.sh > trace_sh_stacks_per_samples_sn3 2>&1 &
 > 
 > nohup sh sh_stacks_per_samples_sn4.sh > trace_sh_stacks_per_samples_sn4 2>&1 &
-
 
