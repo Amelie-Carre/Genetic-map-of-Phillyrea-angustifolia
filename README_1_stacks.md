@@ -9,10 +9,11 @@
 ## Dispatch reads from libraries and create reads per sample
 Create symbolic link to raw data
 > ln -s /path/to_the_raw_data_folder raw_data
+
 Write 2 bash script which will create fastq files for each sample, using Info-Tag-GBS_Filaire_HiSeq_290615-1.csv
 > ./1a_mk_assign_script.py --config config_v1.yaml
 
-Result : 2 scripts v1_dispatch.sh et v1_concat.sh
+Results : 2 scripts v1_dispatch.sh et v1_concat.sh
 
 run dispatch script for each of 26 libraries
 this will dispatch reads of each library and create per library samples file
