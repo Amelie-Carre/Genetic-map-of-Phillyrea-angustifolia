@@ -1,5 +1,7 @@
-# DOI:https://www.biorxiv.org/content/10.1101/2021.04.15.439943v1
-Protocol and scripts for data analysis corresponding to	publication
+
+# Protocol and scripts for data analysis corresponding to	publication
+
+DOI:https://www.biorxiv.org/content/10.1101/2021.04.15.439943v1
 
 **Genetic mapping of sex and self-incompatibility determinants in the androdioecious plant *Phillyrea angustifolia***
 
@@ -11,6 +13,7 @@ Amélie Carré 1, Sophie Gallina 1, Sylvain Santoni 2, Philippe Vernet 1, Cécil
 2. UMR DIAPC - Diversité et adaptation des plantes cultivées
 
 **Corresponding author**: Pierre.Saumitou-Laprade@univ-lille.fr
+
 
 
 ## General procedure
