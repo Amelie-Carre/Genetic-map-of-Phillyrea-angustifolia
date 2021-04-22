@@ -1,4 +1,4 @@
-# DOI:XXX
+# DOI:https://www.biorxiv.org/content/10.1101/2021.04.15.439943v1
 Protocol and scripts for data analysis corresponding to	publication
 
 **Genetic mapping of sex and self-incompatibility determinants in the androdioecious plant *Phillyrea angustifolia***
@@ -16,7 +16,7 @@ Amélie Carré 1, Sophie Gallina 1, Sylvain Santoni 2, Philippe Vernet 1, Cécil
 ## General procedure
 - Linkage Map
   - create markers using stacks (version v2.3e) => 1_create_markers folder
-  - create genetic map using lepmap3 => 2_create_mao folder
+  - create genetic map using lepmap3 => 2_create_map folder
 - Sex and SI loci identification using SEX-DETector => 3_sex_and_SI folder
 - Synteny analysis with the olive tree => 4_syntenie
 
