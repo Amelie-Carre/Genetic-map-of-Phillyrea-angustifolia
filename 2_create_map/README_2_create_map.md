@@ -1,21 +1,19 @@
-# Step 2 Create genetic map using Lep-MAP3 version
+# Step 2 Create genetic map using Lep-MAP3
+
+## List of tools
+- Lep-MAP3 (v. 0.2)
+- bowtie2 version 2.4.1
+- samtools 1.3.1
+- 
 
 ## Orig data
 - list_parents, list_progeny and phen_trait_sex_SI (collect from step 1 (stacks)
 - config_v1.yaml : yaml config file for input files, options for some scripts and result folders
-- List of markers selected by sex-detector : sd_select ???
 
 ## Creates folders for orig data, analysis results and copy orig data
 
     mkdir info
     for i in list_parents list_progeny phen_trait_sex_SI; do cp ../1_markers/res_v1/info/$i info ; done
-
-Theses files should not be modified, change mode to read only
-
-    chmod -w info/list_parents info/list_progeny info/phen_trait_sex_SI
-
-Folder for stacks results with param n=2
-
     mkdir sn2; mkdir sn2/trace
 
 ## Align reads on markers catalog
@@ -24,51 +22,31 @@ Create folders
 
     mkdir sn2/data sn2/bam
 
-Copy reference fasta from stacks markers catalog, index reference and count markers
+Copy reference fasta from stacks markers catalog, index reference
 
-    cp ..1_create_mk/res_v1/sn2/clean_catalog.fasta sn2/data/catalog.fasta
+    cp ../1_create_mk/res_v1/sn2/clean_catalog.fasta sn2/data/catalog.fasta
     bowtie2-build -f sn2/catalog.fasta sn2/catalog
-    grep '>' sn2/catalog.fasta | wc -l
 
-Output : 173 214
+Create symbolic link to raw reads :
 
-Create symbolic link to raw reads : ../NO_BACKUP/v1/samples/SAMPLE.fq.gz
-
-    ln -s ../1_creat_mk/NO_BACKUP/v1/samples_pairs reads
+    ln -s ../1_create_markers/reads/samples_pairs reads
 
 Run alignment
 
     nohup ./01_aln_samples.sh sn2 info/list_parents info/list_progeny > sn2/trace/01_aln_samples 2>&1 &
 
-Output : sn2/bam/SAMPLE.bam
 
-Check alignment rate
-
-    grep 'overall alignment rate' sn2/trace/aln_FI* | cut -d' ' -f 1 | cut -d'/' -f3 | sed -e 's/:/,/' -e 's/%//' > sn2/trace/align_stat.csv
-
-Output : overall alignment rate [81.86% - 94.99%] moyenne 90.774
-
-## Create data.cal input file for Lep-MAP3 with markers and "marker-coded" phenotypes 
+## Create data.call input file for Lep-MAP3 with markers and "marker-coded" phenotypes 
 
 ### list_parents + list_progeny => sorted_bams, mapping.txt
 Create sorted_bams file and mapping.txt file from list_parents + list_progeny
 
     ./02_mk_sorted_bams_and_mapping.py --in_parents info/list_parents --in_progeny info/list_progeny --bams_dir sn2/bam --out_mapping mapping.txt --out_bams sn2/sorted_bams > sn2/trace/02_mk_sorted_bams_and_mapping
 
-check sample numbers 
-
-    wc -w mapping.txt sn2/sorted_bams 
-
-Outputs :
-
-- 206 mapping.txt
-- 206 sn2/sorted_bams
 
 ### list_parents + list_progeny + phenotype => ped.txt phen.txt 
 Create pedigrees file ped.txt and posterior for phenotype markers : post_phen. 
-The input of ParentCall2 consists of genotype likelihoods (posteriors) for each 10 possible SNP genotypes AA, AC, AG, AT, CC, CG, CT, GG, GT and TT. 
-
-??? add stuff on phenotype coding 
+The input of ParentCall2 consists of genotype likelihoods (posteriors) for each 10 possible SNP genotypes AA, AC, AG, AT, CC, CG, CT, GG, GT and TT. We choose to code homozygote phenotype as "1 0 0 0 0 0 0 0 0 0", heterozygote as "0 1 0 0 0 0 0 0 0 0" and unknown as "1 1 1 1 1 1 1 1 1 1".
 
     ./03_mk_ped_phen.py --in_parents info/list_parents --in_progeny info/list_progeny --in_trait info/phen_trait_sex_SI --out_ped sn2/ped.txt --out_phen sn2/post_phen > sn2/trace/03_mk_ped_phen
 
@@ -76,158 +54,39 @@ The input of ParentCall2 consists of genotype likelihoods (posteriors) for each 
 Run ParentCall on phenotype markers
 
     lep-map3.sh ParentCall2 data=sn2/ped.txt posteriorFile=sn2/post_phen removeNonInformative=1 > sn2/phens.call 2> sn2/trace/04_ParentCall2_on_phen
-Result : SI4 disapear since it is not informative Father unknown + Mother homo zygote
 
-    grep "Number of called markers" sn2/trace/04_ParentCall2_on_phen
-    
-Output : Number of called markers = 7 (7 informative)
 
 ### Convert bams to mpileup : SAMPLES.bams => all.mpileup1 
     nohup samtools mpileup -A -q 10 -Q 10 -s $(cat sn2/sorted_bams) > sn2/all.mpileup1 2> sn2/trace/05_mk_all.mpileup1 &
 
-Snps and loci number
-
-    wc -l sn2/all.mpileup1
-    cut -f1 sn2/all.mpileup1 | cut -f 1 | uniq | wc -l
-
-Results : 16 944 608 anps and  99 858 loci
 
 ### mpileup filter 1 : remove markers with more than 30% of ind with cover < 5 reads : all.mpileup1 => all.mpileup2
 
 Create a local version of lepmap3 pileupParser2.awk program with modified parameters
 
-    sed -e 's/limit1 = 3/limit1 = 5/' < /PATH_TO_Lep-MAP3_TOOL/pileupParser2.awk > 06_pileupParser2_EEP.awk
+    sed -e 's/limit1 = 3/limit1 = 5/' < /PATH_TO_Lep-MAP3_TOOL/tools/pileupParser2.awk > 06_pileupParser2_EEP.awk
     
 Run this modified version
 
     nohup awk -f 06_pileupParser2_EEP.awk < sn2/all.mpileup1 > sn2/all.mpileup2 2> sn2/trace/06_mk_all.mpileup2 &
 
-Output : PileupParser2 parameters: limit1=5 limit2=61.8 limit3=20.6 limit4=721
-
-Create Snps and loci lists
-
-    cut -f 1,2 sn2/all.mpileup2 | uniq > sn2/trace/all.mpileup2.snps_list
-    cut -f 1 sn2/all.mpileup2 | uniq > sn2/trace/all.mpileup2.loci_list
-
-Snps and loci number
-
-    wc -l sn2/trace/all.mpileup2.snps_list sn2/trace/all.mpileup2.loci_list
-    
-Results : 
-    90379 sn2/trace/all.mpileup2.snps_list
-    19664 sn2/trace/all.mpileup2.loci_list
 
 ### mpileup filter 2 : set 'unknown genotype' if cover < 5 reads : all.mpileup2 => all.mpileup3
 
-Previous filter skip markers with more than 30% samples having cover < 5 reads. So we still have markers, with some genotypes having cover < 5 reads in less than 30% samples. This second filter will keep all markers, but wil modify genotypes to unknown when cover is less than 5 reads. 
+Previous filter skip markers with more than 30% samples having cover < 5 reads. So we still have markers, with some genotypes having cover < 5 reads in less than 30% samples. This second filter will keep all markers, but will modify genotypes to unknown when cover is less than 5 reads. 
 
     ./07_filter_geno.py --min_cov 5 sn2/all.mpileup2 sn2/all.mpileup3 > sn2/trace/07_mk_all.mpileup3
 
-Check result
-
-    cat sn2/trace/07_mk_all.mpileup3 
-    827 cols => n_ind=206
-    skip line 74205 : 824 cols instead of 827
-    13.66% [2,238,181/16,379,687] modif geno, 94.29% [85,219/90,378] modif snp, 98.65% [19,398/19,664] modif loci
-
-Create Snps and loci lists
-
-    cut -f 1,2 sn2/all.mpileup3 | uniq > sn2/trace/all.mpileup3.snps_list
-    cut -f 1 sn2/all.mpileup3 | uniq > sn2/trace/all.mpileup3.loci_list
-
-Check snps number
-
-    wc -l sn2/trace/all.mpileup[23].snps_list
-
-Output : 
-
-    90379 sn2/trace/all.mpileup2.snps_list
-    90378 sn2/trace/all.mpileup3.snps_list
-
-Results : one snp missing : skip line 74205 : 824 cols instead of 827
-
-Check missing snp
-
-    diff sn2/trace/all.mpileup[23].snps_list
-Output : 
-    < sn2_115664_142bp	137
-
-Check loci number
-
-    wc -l sn2/trace/all.mpileup[23].loci_list
-
-Output
-
-    19664 sn2/trace/all.mpileup2.loci_list
-    19664 sn2/trace/all.mpileup3.loci_list
 
 ### convert mpileup => post : all.mpileup3 => markers.post
-1 header line [^CHR] in markers.post
 
     nohup awk -f /PATH_TO_Lep-MAP3/pileup2posterior.awk < sn2/all.mpileup3 > sn2/markers.post 2> sn2/trace/08_markers.post &
 
-Snp and loci lists
-
-    cut -f 1,2 sn2/markers.post | grep -v '^CHR' | uniq > sn2/trace/markers.post.snps_list
-    cut -f 1 sn2/markers.post | grep -v '^CHR' | uniq > sn2/trace/markers.post.loci_list
-
-Check Snps and loci number
-
-    wc -l sn2/trace/all.mpileup[23].snps_list sn2/trace/markers.post.snps_list
-    wc -l sn2/trace/all.mpileup[23].loci_list sn2/trace/markers.post.loci_list
-
-Output
-
-    90379 sn2/trace/all.mpileup2.snps_list
-    90378 sn2/trace/all.mpileup3.snps_list
-    90378 sn2/trace/markers.post.snps_list
-    19664 sn2/trace/all.mpileup2.loci_list
-    19664 sn2/trace/all.mpileup3.loci_list
-    19664 sn2/trace/markers.post.loci_list
 
 ### Convert pedigree + markers.post => markers.call
-post = proba, call = checked proba ...
-
-7 header lines in markers.call : 1 header line [^#java] + 6 header lines [^CHR]
 
     nohup lep-map3.sh ParentCall2 data=sn2/ped.txt posteriorFile=sn2/markers.post removeNonInformative=1 > sn2/markers.call 2> sn2/trace/09_ParentCall2_on_mk &
 
-Check 
-
-    grep 'Number of called markers' sn2/trace/09_ParentCall2_on_mk 
-    
-Output : 
-
-    Number of called markers = 39741 (39741 informative)
-
-Snp and loci lists
-
-    cut -f 1,2 sn2/markers.call | grep -v '^#' | grep -v '^CHR' | uniq > sn2/trace/markers.call.snps_list
-    cut -f 1 sn2/markers.call | grep -v '^#' | grep -v '^CHR' | uniq > sn2/trace/markers.call.loci_list
-
-Snps number
-
-    wc -l sn2/trace/all.mpileup[23].snps_list sn2/trace/markers.post.snps_list sn2/trace/markers.call.snps_list
-
-Output : 
-
-    90379 sn2/trace/all.mpileup2.snps_list
-    90378 sn2/trace/all.mpileup3.snps_list
-    90378 sn2/trace/markers.post.snps_list
-    39741 sn2/trace/markers.call.snps_list
-
-OK 39741 sn2/trace/markers.call.snps_list vs Number of called markers = 39741 (39741 informative)
-
-Loci number
-
-    wc -l sn2/trace/all.mpileup[23].loci_list sn2/trace/markers.post.loci_list sn2/trace/markers.call.loci_list
-
-Output
-
-    19664 sn2/trace/all.mpileup2.loci_list
-    19664 sn2/trace/all.mpileup3.loci_list
-    19664 sn2/trace/markers.post.loci_list
-    14544 sn2/trace/markers.call.loci_list
 
 ### Combine phens.call and markers.call ==> data.call_tmp
 Concat phens.call and markers.call
@@ -238,127 +97,36 @@ skip 7 header lines
 
     tail -n +8 sn2/markers.call >> sn2/data.call_tmp
     
-Check line number
-
-    wc -l sn2/markers.call sn2/data.call_tmp
-    
-Output : 
-    39748 sn2/markers.call
-    39755 sn2/data.call_tmp
-
-OK +7 pheno
-
-Snp and loci lists
-
-    cut -f 1,2 sn2/data.call_tmp | grep -v '^#' | grep -v '^CHR' | uniq > sn2/trace/data.call_tmp.snps_list
-    cut -f 1 sn2/data.call_tmp | grep -v '^#' | grep -v '^CHR' | uniq > sn2/trace/data.call_tmp.loci_list
-
-Check Snps and loci numbers
-
-    wc -l sn2/trace/all.mpileup[23].snps_list sn2/trace/markers.post.snps_list sn2/trace/markers.call.snps_list sn2/trace/data.call_tmp.snps_list
-    wc -l sn2/trace/all.mpileup[23].loci_list sn2/trace/markers.post.loci_list sn2/trace/markers.call.loci_list sn2/trace/data.call_tmp.loci_list
-
-Output
-
-    90379 sn2/trace/all.mpileup2.snps_list
-    90378 sn2/trace/all.mpileup3.snps_list
-    90378 sn2/trace/markers.post.snps_list
-    39741 sn2/trace/markers.call.snps_list
-    39748 sn2/trace/data.call_tmp.snps_list
-    19664 sn2/trace/all.mpileup2.loci_list
-    19664 sn2/trace/all.mpileup3.loci_list
-    19664 sn2/trace/markers.post.loci_list
-    14544 sn2/trace/markers.call.loci_list
-    14551 sn2/trace/data.call_tmp.loci_list
 
 ### Filter distorted markers (markers segregating in a non-Mendelian fashion) : data.call_tmp => data.call
 
     lep-map3.sh Filtering2 data=sn2/data.call_tmp removeNonInformative=1 dataTolerance=0.0000001 > sn2/data.call 2> sn2/trace/11_filter_data_call
 
-Snps and loci lists
-
-    cut -f 1,2 sn2/data.call | grep -v '^#' | grep -v '^CHR' | uniq > sn2/trace/data.call.snps_list
-    cut -f 1 sn2/data.call | grep -v '^#' | grep -v '^CHR' | uniq > sn2/trace/data.call.loci_list
-
-Check snps and loci number
-
-    wc -l sn2/trace/all.mpileup[23].snps_list sn2/trace/markers.post.snps_list sn2/trace/markers.call.snps_list sn2/trace/data.call_tmp.snps_list sn2/trace/data.call.snps_list
-    wc -l sn2/trace/all.mpileup[23].loci_list sn2/trace/markers.post.loci_list sn2/trace/markers.call.loci_list sn2/trace/data.call_tmp.loci_list sn2/trace/data.call.loci_list
-
-Output
-
-    90379 sn2/trace/all.mpileup2.snps_list
-    90378 sn2/trace/all.mpileup3.snps_list
-    90378 sn2/trace/markers.post.snps_list
-    39741 sn2/trace/markers.call.snps_list
-    39748 sn2/trace/data.call_tmp.snps_list
-    17096 sn2/trace/data.call.snps_list
-    19664 sn2/trace/all.mpileup2.loci_list
-    19664 sn2/trace/all.mpileup3.loci_list
-    19664 sn2/trace/markers.post.loci_list
-    14544 sn2/trace/markers.call.loci_list
-    14551 sn2/trace/data.call_tmp.loci_list
-    11070 sn2/trace/data.call.loci_list
 
 ### Associate line number to snp : data_call ==> snp_nb2ID
 All maps have the same number of line, ie the same markers in the same order.
-Adding marker to LG (eg JoinSingles2All) or removing markers from LG only mean setting marker LG number 0 (to remove marker from LG) or N (to add marker to LGN). So we can always use the same file to associate maker position in file (ie line number) and marker name. This file is created from data.call which was used by lepmap3 initial command (SeparateChromosome). This file is used in check_all.sh and 8b_map_recode.py.
+Adding marker to LG (eg JoinSingles2All) or removing markers from LG means only setting marker LG number 0 (to remove marker from LG) or N (to add marker to LGN). So we can always use the same file to associate maker position in file (ie line number) and marker name. This file is created from data.call which was used by Lep-MAP3 initial command (SeparateChromosome). This file is used in check_all.sh and 8b_map_recode.py.
 
     cut -f 1,2 < sn2/data.call | grep -v '#' | grep -v 'CHR' | cat -n | sed -e 's/ //g' > sn2/snp_nb2ID
 
-Check lines in mapping file 
-
-    wc -l sn2/snp_nb2ID 
-
-Output
-
-    17096 sn2/snp_nb2ID
-
-Snps and loci lists
-
-    cut -f 2,3 sn2/snp_nb2ID | uniq > sn2/trace/snp_nb2ID.snps_list
-    cut -f 2 sn2/snp_nb2ID | uniq > sn2/trace/snp_nb2ID.loci_list
-
-Final check on snps an loci number
-
-    wc -l sn2/trace/all.mpileup[23].snps_list sn2/trace/markers.post.snps_list sn2/trace/markers.call.snps_list sn2/trace/data.call_tmp.snps_list sn2/trace/data.call.snps_list sn2/trace/snp_nb2ID.snps_list
-    wc -l sn2/trace/all.mpileup[23].loci_list sn2/trace/markers.post.loci_list sn2/trace/markers.call.loci_list sn2/trace/data.call_tmp.loci_list sn2/trace/data.call.loci_list sn2/trace/snp_nb2ID.loci_list
-
-Output
-
-    90379 sn2/trace/all.mpileup2.snps_list
-    90378 sn2/trace/all.mpileup3.snps_list
-    90378 sn2/trace/markers.post.snps_list
-    39741 sn2/trace/markers.call.snps_list
-    39748 sn2/trace/data.call_tmp.snps_list
-    17096 sn2/trace/data.call.snps_list
-    17096 sn2/trace/snp_nb2ID.snps_list
-
-    19664 sn2/trace/all.mpileup2.loci_list
-    19664 sn2/trace/all.mpileup3.loci_list
-    19664 sn2/trace/markers.post.loci_list
-    14544 sn2/trace/markers.call.loci_list
-    14551 sn2/trace/data.call_tmp.loci_list
-    11070 sn2/trace/data.call.loci_list
-    11070 sn2/trace/snp_nb2ID.loci_list
 
 ## Create LGs using SeparateChromosomes2 :  pedigree + data.call => map.txt (= LG list)
 
-Lep-MAP3 SeparateChromosome will be run with various values for 2 parameters : **lod** and **size**. Results files name will contain N value for param lod and M value for param size : map_l_N_s_M.txt
+Lep-MAP3 SeparateChromosome will be run with various values for 2 parameters : **lod** and **size**. Results files are named from N value for param lod and M value for param size : NAME.txt = map_l_N_s_M.txt
 
 ### Main strategy for scrip 6a_LG_create.py
 For each pair or lod and size param : 
 
-- create LG (lepmap3 SeparateChromsome) => map_l_N_s_M.txt
-- compute metrics on LG (6b_LG_metrics_v2.py on map_l_N_s_M.txt)
-- polish LG (6c_LG_polish_v2.sh : map_l_N_s_M.txt => map_l_N_s_M**rsrcsr**.txt)
-    - refine (lepmap3 SeparateChromosomes2 with an existing map) : map_l_N_s_M.txt => map_l_N_s_M**r**.txt
-    - add singles (lepmap3 JoinSingles2All) : map_l_N_s_M**r**.txt => map_l_N_s_M**rs**.txt
-    - refine (lepmap3 SeparateChromosomes2 with an existing map) : map_l_N_s_M**rs**.txt => map_l_N_s_M**rsr**.txt
-    - clean (6e_LG_clean.py) : map_l_N_s_M**rsr**.txt => map_l_N_s_M**rsrc**.txt
-    - add singles (lepmap3 JoinSingles2All) : map_l_N_s_M**rsrc**.txt => map_l_N_s_M**rsrcs*.txt
-    - refine (lepmap3 SeparateChromosomes2 with an existing map) : map_l_N_s_M**rsrcs**.txt => map_l_N_s_M**rsrcsr**.txt
-- compute metrics (6b_LG_metrics_v2.py on map_l_N_s_M**rsrcsr**.txt)
+- create LG (lepmap3 SeparateChromsome) => NAME.txt
+- compute metrics on LG (6b_LG_metrics_v2.py on NAME.txt)
+- polish LG (6c_LG_polish_v2.sh : NAMEtxt => NAME**rsrcsr**.txt)
+    - refine (lepmap3 SeparateChromosomes2 with an existing map) : NAME.txt => NAME**r**.txt
+    - add singles (lepmap3 JoinSingles2All) : NAME**r**.txt => NAME**rs**.txt
+    - refine (lepmap3 SeparateChromosomes2 with an existing map) : NAME**rs**.txt => NAME**rsr**.txt
+    - clean (6e_LG_clean.py) : NAME**rsr**.txt => NAME**rsrc**.txt
+    - add singles (lepmap3 JoinSingles2All) : NAME**rsrc**.txt => NAME**rsrcs**.txt
+    - refine (lepmap3 SeparateChromosomes2 with an existing map) : NAME**rsrcs**.txt => NAME**rsrcsr**.txt
+- compute metrics (6b_LG_metrics_v2.py on NAME**rsrcsr**.txt)
 
 ### Run script to create LGs 
 
@@ -417,17 +185,12 @@ ln -s map_OKsrc.txt sn2/tests/final.txt
 
 Results : final_map_OKsrc_LG_{1-24}_{0,1}_{1-3}.txt
 
-Check errors :
-
-    grep 'commit_memory' sn2/final_map_OKsrc_LG_*_*_*.txt*
-
-Result : no errors
 
 Check scores
 
     grep '^logL =' sn2/trace/7a_om_map_final_map_OKsrc_LG_*_*_* > sn2/trace/7a_om_scores_map_final
 
-Collect best map => sn2/final_best_map_OKsrc_LG_?_?.txt, ignoring LG23
+Collect best map
 
     ./7a_get_best_maps.py --map map_OKsrc > sn2/trace/7a_get_best_maps
 
@@ -438,13 +201,6 @@ LG23 will be ignored since 7a_get_best_maps.py didn't create result file for it.
 
     cat sn2/final_best_map_OKsrc_LG_*_0.txt > sn2/final_best_map_OKsrc_0.txt 
     cat sn2/final_best_map_OKsrc_LG_*_1.txt > sn2/final_best_map_OKsrc_1.txt 
-
-Check
-
-    grep -v '^#' < sn2/final_best_map_OKsrc_0.txt | wc -l
-    grep -v '^#' < sn2/final_best_map_OKsrc_1.txt | wc -l
-
-Output : 15814 in both case
 
 
 ## Reformat maps
@@ -473,8 +229,5 @@ Since circos only uses first col, create males and female maps
     cut -d ',' -f 1,2,4 < sn2/final_best_map_OKsrc_0.gmap_locus > tmp_124
     paste -d ',' tmp_123 tmp_3 > sn2/final_best_map_OKsrc_M.gmap_locus
     paste -d ',' tmp_124 tmp_4 > sn2/final_best_map_OKsrc_F.gmap_locus
-
-
-SexDetector : Cf Amélie
 
 
