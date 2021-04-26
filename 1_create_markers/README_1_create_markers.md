@@ -2,7 +2,7 @@
 
 ## Orig data 
 - phenotypes_2019-06-05.csv : samples phenotype file
-- NO_BACKUP/v1/samples_pairs/SAMPLE.{1, 2}.fq.gz : raw reads
+- reads/samples_pairs/SAMPLE.{1, 2}.fq.gz : reads pairs per sample
 
 ## Create folders and various info files from phenotype file
 
@@ -24,33 +24,32 @@ Results :
 - res_v1/info/popmap_phen.tsv
 - res_v1/info/list_parents
 - res_v1/info/list_progeny
+- res_v1/info/list_samples
 
 ## Concat paired-end files for stacks
-    mkdir NO_BACKUP/v1/samples
-    for sample in `cat NO_BACKUP/v1/samples.txt`
+    mkdir reads/samples
+    for sample in `cat res_v1/info/list_samples`
     do
-        cat NO_BACKUP/v1/samples_pairs/${sample}.[12].fq.gz > NO_BACKUP/v1/samples/${sample}.fq.gz
+        cat reads/samples_pairs/${sample}.[12].fq.gz > reads/samples/${sample}.fq.gz
     done
 
 
 ## Run stacks pipeline with various parameters
 ### Stacks protocole summary
-1. create stacks for parents and progeny using stacks/ustacks
-  - option **m** : Minimum depth of coverage required to create a stack (default 3) ⇒ 3
-  - option **M** : Maximum distance (in nucleotides) allowed between stacks (default 2) ⇒ = 2, 3, 4
-2. create catalog from parents's stacks using stccks/cstacks
-   - option **n** : number of mismatches allowed between sample tags when generating the catalog (default 0). ⇒  same value as **M**
-3. create genotypes for parents adn progeny from catalog and each sample stacks usung stacks/sstacks
+1. Create stacks for parents and progeny using stacks/ustacks
+    - option **m** : Minimum depth of coverage required to create a stack (default 3) ⇒ 3
+    - option **M** : Maximum distance (in nucleotides) allowed between stacks (default 2) ⇒ = 2, 3, 4
+2. Create catalog from parents's stacks using stacks/cstacks
+     - option **n** : number of mismatches allowed between sample tags when generating the catalog (default 0). ⇒  same value as **M**
+3. Create genotypes for parents and progeny from catalog and each sample stacks using stacks/sstacks
 4. create bam files for parents and progeny using stacks/tsv2bam
-5. Re-assemble loci, create final catalog and new bam for parents and progeny using gstacks/gstacks
-  lepmap3 will use these new bams, so we could stop here
-  step 6 will enable to count loci and snps per loci in order to have statistics used in Rochette protocole to choose best value for n option
-6. create haplotypes, loci … using stacks/population (option -R/--min-samples-overall [float]: minimum percentage of individuals across populations required to process a locus. = 0.45)
+5. Re-assemble loci, create final catalog and new bam for parents and progeny using stacks/gstacks. Lep-MAP3 will use these new bams, so we could stop here. run next step to enable to count loci and snps per loci in order to have statistics used in Rochette protocole to choose best value for n option.
+6. Create haplotypes, loci … using stacks/population (option -R/--min-samples-overall [float]: minimum percentage of individuals across populations required to process a locus. = 0.45)
 
 Final results :
 
-- markers catalog (markers will be blasted to Ole genome in order to get syntheny between Pang genetic map and Ole physical map)
-- per sample alignment file on this catalog (alignment files will be used by lepmap3 to build genetic map)
+- markers catalog (markers will be blasted to Ole genome in order to get synteny between Pang genetic map and Ole physical map)
+- per sample alignment file on this catalog (alignment files will be used by Lep-MAP3 to build genetic map)
 
 ### Use protocol from Rochette 2017 to choose best 'n' param
 - **M** controls the number of mismatches allowed between the two alleles of a heterozygote sample
@@ -63,7 +62,7 @@ we tested param
 
 
 ### Creates scripts to run ustacks, cstacks, sstacks and tsv2bam on all samples with various n parameters
-    sh 4a_run_stacks_per_sample.sh  2 3 4
+    sh 4a_run_stacks_per_sample.sh 2 3 4
 
 Result : sh_stacks_per_samples_sn{2,3,4}.sh
 
@@ -71,4 +70,3 @@ Result : sh_stacks_per_samples_sn{2,3,4}.sh
     nohup sh sh_stacks_per_samples_sn2.sh > trace_sh_stacks_per_samples_sn2 2>&1 &
     nohup sh sh_stacks_per_samples_sn3.sh > trace_sh_stacks_per_samples_sn3 2>&1 &
     nohup sh sh_stacks_per_samples_sn4.sh > trace_sh_stacks_per_samples_sn4 2>&1 &
-
