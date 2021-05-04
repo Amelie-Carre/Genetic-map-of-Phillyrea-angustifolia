@@ -4,11 +4,9 @@
 - Lep-MAP3 (v. 0.2)
 - bowtie2 version 2.4.1
 - samtools 1.3.1
-- 
 
 ## Orig data
 - list_parents, list_progeny and phen_trait_sex_SI (collect from step 1 (stacks)
-- config_v1.yaml : yaml config file for input files, options for some scripts and result folders
 
 ## Creates folders for orig data, analysis results and copy orig data
 
